@@ -1,0 +1,39 @@
+# Design notes and documentation live outside the code history,
+# except the ones meant for a public audience.
+*.md
+!/README.md
+!/DESIGN.md
+*.png
+*.jpg
+*.jpeg
+
+# Compiler output and run artefacts.
+/bin/
+/work*/
+
+# The previous generation of benchmarks, kept locally for reference only.
+/old/
+
+# The BP7-versus-FPC codegen experiment (DESIGN.md 12): a side question about
+# the compilers rather than about the benchmark, so its programs and the host
+# tools that drive them stay in the working copy.
+/spike/cg*.pas
+/spike/probe.pas
+/tools/buildbp.py
+/tools/runcgtest.py
+/tools/extractcgcode.py
+
+# FPC leftovers when a build stops before cleanup.
+ppas.bat
+link*.res
+
+# Host-tool caches.
+__pycache__/
+*.py[cod]
+
+# What a run leaves behind: the directory the emulator mounts as a drive -
+# REPORT.TXT and the numbered records under DB\ - and the emulator's own log,
+# which it writes into the working directory it was started from.
+/Data/
+/stdout.txt
+/stderr.txt

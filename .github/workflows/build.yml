@@ -1,0 +1,101 @@
+name: Build
+
+# Builds bin/atbench.exe with the official FPC 3.2.2 i8086-msdos cross-compiler
+# (nobody's private toolchain - see README.md "Building from source"). Runs
+# on every push/PR as a correctness check; on a v* tag it also attaches the
+# EXE to a GitHub Release.
+#
+# The cross-compiler package ships the medium-model RTL only - the large
+# model this project requires (build.bat explains why) has to be built once
+# from the matching FPC source release. That step is slow, so its output is
+# cached; bump TOOLCHAIN_CACHE_KEY to force a rebuild if the recipe changes.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  FPC_VERSION: 3.2.2
+  FPC_CROSS_URL: https://sourceforge.net/projects/freepascal/files/msdos/3.2.2/fpc-3.2.2.x86_64-linux.cross.i8086-msdos.tar.xz/download
+  FPC_SOURCE_URL: https://sourceforge.net/projects/freepascal/files/Source/3.2.2/fpc-3.2.2.source.tar.gz/download
+  TOOLCHAIN_CACHE_KEY: fpc-3.2.2-i8086-msdos-large-v1
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the i8086-msdos large-model toolchain
+        id: cache-toolchain
+        uses: actions/cache@v4
+        with:
+          path: toolchain
+          key: ${{ env.TOOLCHAIN_CACHE_KEY }}
+
+      - name: Assemble the toolchain (cross-compiler + large-model RTL)
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
+        run: |
+          set -eu
+
+          echo "Fetching the official FPC $FPC_VERSION i8086-msdos cross-compiler..."
+          curl -fsSL "$FPC_CROSS_URL" -o cross.tar.xz
+          mkdir -p toolchain
+          tar -xf cross.tar.xz -C toolchain --strip-components=1
+
+          echo "Fetching the official FPC $FPC_VERSION source, for the RTL only..."
+          curl -fsSL "$FPC_SOURCE_URL" -o fpcsrc.tar.gz
+          mkdir -p fpcsrc
+          tar -xf fpcsrc.tar.gz -C fpcsrc --strip-components=1
+
+          PPCROSS="$(find toolchain -name ppcross8086 -type f | head -1)"
+          echo "bootstrap compiler: $PPCROSS"
+          test -x "$PPCROSS"
+
+          # The exact recipe build.bat itself prints when it can't find a
+          # large RTL - see there and DESIGN.md 1.1 for why this is needed.
+          make -C fpcsrc/rtl clean all \
+            OS_TARGET=msdos CPU_TARGET=i8086 SUB_TARGET=large \
+            OPT="-WmLarge -Cp80286" PP="$PPCROSS"
+
+          mkdir -p toolchain/units/i8086-msdos-large/rtl
+          cp fpcsrc/rtl/units/i8086-msdos/*.ppu toolchain/units/i8086-msdos-large/rtl/
+          cp fpcsrc/rtl/units/i8086-msdos/*.a   toolchain/units/i8086-msdos-large/rtl/
+
+      - name: Build atbench.exe
+        run: |
+          set -eu
+          PPCROSS="$(find toolchain -name ppcross8086 -type f | head -1)"
+          mkdir -p bin work
+          # Same flags as build.bat - see there for what each one is for.
+          "$PPCROSS" -n -Tmsdos -WmLarge -Cp80286 -Sg -XX -CX -O2 -Xm \
+            -Fu"toolchain/units/i8086-msdos-large/rtl" \
+            -Fusrc -Fisrc -FUwork -FEbin \
+            src/atbench.pas
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atbench
+          path: bin/atbench.exe
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: atbench
+          path: bin
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: bin/atbench.exe
