@@ -22,7 +22,7 @@ env:
   FPC_VERSION: 3.2.2
   FPC_CROSS_URL: https://sourceforge.net/projects/freepascal/files/msdos/3.2.2/fpc-3.2.2.x86_64-linux.cross.i8086-msdos.tar.xz/download
   FPC_SOURCE_URL: https://sourceforge.net/projects/freepascal/files/Source/3.2.2/fpc-3.2.2.source.tar.gz/download
-  TOOLCHAIN_CACHE_KEY: fpc-3.2.2-i8086-msdos-large-v1
+  TOOLCHAIN_CACHE_KEY: fpc-3.2.2-i8086-msdos-large-v2
 
 permissions:
   contents: read
@@ -40,6 +40,17 @@ jobs:
           path: toolchain
           key: ${{ env.TOOLCHAIN_CACHE_KEY }}
 
+      # prt0*.asm - the start-up code every DOS binary begins with - is
+      # hand-written assembly, and the RTL Makefile assembles it by calling
+      # msdos-nasm, which is FPC's cross-tool spelling of plain nasm. Not
+      # gated on the cache: the compile step is entitled to it just as much.
+      - name: Provide nasm as msdos-nasm
+        run: |
+          set -eu
+          command -v nasm >/dev/null || { sudo apt-get update; sudo apt-get install -y nasm; }
+          sudo ln -sf "$(command -v nasm)" /usr/local/bin/msdos-nasm
+          msdos-nasm -v
+
       - name: Assemble the toolchain (cross-compiler + large-model RTL)
         if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
@@ -55,24 +66,37 @@ jobs:
           mkdir -p fpcsrc
           tar -xf fpcsrc.tar.gz -C fpcsrc --strip-components=1
 
-          PPCROSS="$(find toolchain -name ppcross8086 -type f | head -1)"
+          PPCROSS="$(find "$PWD/toolchain" -name ppcross8086 -type f | head -1)"
           echo "bootstrap compiler: $PPCROSS"
           test -x "$PPCROSS"
+
+          # Two things the Windows spelling of this recipe hides. The rtl
+          # Makefile appends the *target's* executable extension to whatever
+          # PP names, so on Linux the compiler still has to be reachable as
+          # .exe; and `make -C` means a relative path points nowhere by the
+          # time it is used, so it has to be absolute.
+          ln -sf "$(basename "$PPCROSS")" "$PPCROSS.exe"
 
           # The exact recipe build.bat itself prints when it can't find a
           # large RTL - see there and DESIGN.md 1.1 for why this is needed.
           make -C fpcsrc/rtl clean all \
             OS_TARGET=msdos CPU_TARGET=i8086 SUB_TARGET=large \
-            OPT="-WmLarge -Cp80286" PP="$PPCROSS"
+            OPT="-WmLarge -Cp80286" PP="$PPCROSS.exe"
 
+          # Which directory the units land in is the Makefile's own business
+          # and is not the same on every host - units/i8086-msdos on Windows,
+          # units/msdos here - so find them rather than name them. The .o
+          # files come along too: prt0l.o is the large model's start-up code,
+          # and without it nothing links.
+          UNITS="$(dirname "$(find fpcsrc/rtl -name system.ppu | head -1)")"
+          echo "RTL units: $UNITS"
           mkdir -p toolchain/units/i8086-msdos-large/rtl
-          cp fpcsrc/rtl/units/i8086-msdos/*.ppu toolchain/units/i8086-msdos-large/rtl/
-          cp fpcsrc/rtl/units/i8086-msdos/*.a   toolchain/units/i8086-msdos-large/rtl/
+          cp "$UNITS"/*.ppu "$UNITS"/*.a "$UNITS"/*.o toolchain/units/i8086-msdos-large/rtl/
 
       - name: Build atbench.exe
         run: |
           set -eu
-          PPCROSS="$(find toolchain -name ppcross8086 -type f | head -1)"
+          PPCROSS="$(find "$PWD/toolchain" -name ppcross8086 -type f | head -1)"
           mkdir -p bin work
           # Same flags as build.bat - see there for what each one is for.
           "$PPCROSS" -n -Tmsdos -WmLarge -Cp80286 -Sg -XX -CX -O2 -Xm \

@@ -74,8 +74,13 @@ make -C rtl clean all OS_TARGET=msdos CPU_TARGET=i8086 SUB_TARGET=large \
 
 Copy the resulting `rtl/units/i8086-msdos/*.ppu` and `*.a` into
 `<fpc root>/units/i8086-msdos-large/rtl`, next to `bin/<host>/ppcross8086`.
-`.github/workflows/build.yml` does exactly this in a clean CI container, so
-it's a working, copy-pasteable reference if anything above is unclear. Once
+On a Linux host three details differ from the Windows recipe above, and
+`.github/workflows/build.yml` handles all three, so read it as the working
+reference: the Makefile assembles the start-up code by calling `msdos-nasm`
+(a symlink to plain `nasm` is enough), it appends the target's `.exe` to
+whatever `PP` names and wants that path absolute, and it leaves the units in
+`rtl/units/msdos`, where the `.o` files beside them - `prt0l.o` above all -
+have to be copied along with the `.ppu` and `.a`. Once
 the toolchain is in place (`build.bat` looks for it under a few common
 roots, or point `ATFPC` at it):
 
