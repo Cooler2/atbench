@@ -219,8 +219,6 @@ work/      compiler scratch, floppy images, extracted results (not tracked)
   numbers.
 - A Pentium-133/MVP3 machine hangs partway through a run; narrowed down to
   the neighbourhood of the RDTSC-based clock-speed probe, not yet root-caused.
-- Still to come: the VBE 101h operation set and video port tests, and a
-  Realtime CPU mode.
 
 ## License
 
