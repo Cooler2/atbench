@@ -105,13 +105,15 @@ python tools\runqemu.py bin\atbench.exe --args "/auto /fdd /emu" --cpu pentium2
 
 **86Box**, for real chipsets and video cards with plausible timings.
 
-**Real hardware** — the only source of numbers worth keeping. Write a plain
-FAT12 floppy with `tools\mkflop.py`, run `ATBENCH.EXE` from the hard disk (the
-disk suite exercises whichever drive it's given), and either drive the menu
-by hand or script it:
+**Real hardware** — the only source of numbers worth keeping. Get the one
+`.EXE` onto the machine by whatever route it already takes files — a CF card
+in a reader is the short way on anything with a CF adapter, and for a machine
+that only takes floppies `tools\mkflop.py` writes a plain FAT12 image — then
+run `ATBENCH.EXE` from the hard disk (the disk suite exercises whichever drive
+it's given), and either drive the menu by hand or script it:
 
 ```
-python tools\mkflop.py work\at.img bin\atbench.exe
+python tools\mkflop.py work\at.img bin\atbench.exe    (only if it has to be a floppy)
 ATBENCH /auto /label 486DX2-66 turbo on /notes Abit AB-PI4, 256K L2 WB
 ```
 
