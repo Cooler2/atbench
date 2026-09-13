@@ -79,9 +79,14 @@ jobs:
 
           # The exact recipe build.bat itself prints when it can't find a
           # large RTL - see there and DESIGN.md 1.1 for why this is needed.
+          # -n -CX -XX are part of it and not decoration: with no fpc.cfg to
+          # supply them the system unit's code does not fit in one 64K code
+          # segment and the build stops at "Code segment too large". A
+          # developer machine whose own config already says -CX never sees
+          # it, which is exactly how this recipe came to be written without.
           make -C fpcsrc/rtl clean all \
             OS_TARGET=msdos CPU_TARGET=i8086 SUB_TARGET=large \
-            OPT="-WmLarge -Cp80286" PP="$PPCROSS.exe"
+            OPT="-WmLarge -Cp80286 -n -CX -XX" PP="$PPCROSS.exe"
 
           # Which directory the units land in is the Makefile's own business
           # and is not the same on every host - units/i8086-msdos on Windows,

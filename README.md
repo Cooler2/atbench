@@ -69,18 +69,23 @@ ships the medium memory model RTL only; this project needs the large model
 
 ```
 make -C rtl clean all OS_TARGET=msdos CPU_TARGET=i8086 SUB_TARGET=large \
-  OPT="-WmLarge -Cp80286" PP=<path to ppcross8086>
+  OPT="-WmLarge -Cp80286 -n -CX -XX" PP=<path to ppcross8086>
 ```
 
-Copy the resulting `rtl/units/i8086-msdos/*.ppu` and `*.a` into
+`-n -CX -XX` are part of the recipe, not decoration: with no `fpc.cfg` to
+supply them the system unit's code does not fit in one 64K code segment and
+the build stops at `Code segment too large` - which is why a machine whose
+own config already says `-CX` builds this and a clean one does not.
+
+Copy the resulting `rtl/units/i8086-msdos/*.ppu`, `*.a` and `*.o` into
 `<fpc root>/units/i8086-msdos-large/rtl`, next to `bin/<host>/ppcross8086`.
-On a Linux host three details differ from the Windows recipe above, and
+The `.o` files are the start-up code - `prt0l.o` is this model's - and
+nothing links without them. On a Linux host three more details differ, and
 `.github/workflows/build.yml` handles all three, so read it as the working
-reference: the Makefile assembles the start-up code by calling `msdos-nasm`
+reference: the Makefile assembles that start-up code by calling `msdos-nasm`
 (a symlink to plain `nasm` is enough), it appends the target's `.exe` to
 whatever `PP` names and wants that path absolute, and it leaves the units in
-`rtl/units/msdos`, where the `.o` files beside them - `prt0l.o` above all -
-have to be copied along with the `.ppu` and `.a`. Once
+`rtl/units/msdos` rather than `rtl/units/i8086-msdos`. Once
 the toolchain is in place (`build.bat` looks for it under a few common
 roots, or point `ATFPC` at it):
 

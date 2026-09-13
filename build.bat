@@ -67,10 +67,10 @@ if not defined PPC (
   echo build: FPC ships the medium RTL only.  To build the large one
   echo build: once, from the FPC source tree:
   echo build:
-  echo build:   make clean all OS_TARGET=msdos CPU_TARGET=i8086 SUB_TARGET=large OPT="-WmLarge -Cp80286"
+  echo build:   make clean all OS_TARGET=msdos CPU_TARGET=i8086 SUB_TARGET=large OPT="-WmLarge -Cp80286 -n -CX -XX"
   echo build:
-  echo build: then copy the resulting rtl\units\i8086-msdos\*.ppu and
-  echo build: *.a into ^<root^>\units\i8086-msdos-large\rtl.
+  echo build: then copy the resulting rtl\units\i8086-msdos\*.ppu,
+  echo build: *.a and *.o into ^<root^>\units\i8086-msdos-large\rtl.
   exit /b 1
 )
 
